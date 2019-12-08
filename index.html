@@ -1,0 +1,168 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
+<title>Snake 2</title>
+<style>
+html, body {padding: 0; margin: 0;}
+* {box-sizing: border-box;}
+body {background: gray; padding: 10px;}
+.score {font-size: 32px; color: white; text-shadow: 0 0 6px #010; text-align: center;}
+canvas {background: black; margin: 0 auto; display: block;}
+</style></head><body><div id="score" class="score">Score: 0 | High Score: 0</div><canvas id="game" width="1280" height="720"></canvas>
+<script>
+window.onload = function () {
+    document.addEventListener('keydown', changeDirection);
+    setInterval(main, 1000/60); // 60 FPS
+}
+
+const c = document.getElementById("game");
+const ctx = c.getContext("2d");
+
+let 
+    box = 20, // Размер клетки
+    gs = fkp = false, // Начало игры && Нажатие клавиши
+    food = [],
+    snake = [],
+    speed = baseSpeed = 5, // Скорость змейки
+    xv = yv = 0, // Скорость по "х" и "у"
+    sx = 32 * box, // Позиция змейки по "х"
+    sy = 18 * box, // Позиция змейки по "у"
+    tail = box*2, // Минимальный размер змейки
+    score = 0,
+    hs = 0; // High Score
+
+function main() {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    // Скорость
+    sx += xv;
+    sy += yv;
+
+    // Выезд за границу
+    if (sx > c.width) {sx = 0;}
+    if (sx + box < 0) {sx = c.width;}
+    if (sy > c.height) {sy = 0;}
+    if (sy + box < 0) {sy = c.height;}
+
+    // Рисуем змейку
+    ctx.fillStyle = 'lime';
+    for (let q = 0; q < snake.length; q++) {
+        ctx.fillStyle = snake[q].color || 'lime';
+        ctx.fillRect(snake[q].x, snake[q].y, box, box);
+    }
+    snake.push ({x: sx, y: sy, color: ctx.fillStyle});
+
+    // Ограничитель
+    if (snake.length > tail) {snake.shift();}
+    // Съеденый
+    if (snake.length > tail) {snake.shift();}
+
+    // Столкновения
+    if (snake.length >= tail && gs) {
+        for (let w = snake.length - box; w >= 0; w--) {
+            if (
+                sx < (snake[w].x + box) &&
+                sx + box > snake[w].x &&
+                sy < (snake[w].y + box) &&
+                sy + box > snake[w].y
+            ) {
+                tail = box; // Срезаем хвост
+                speed = baseSpeed; // Снижаем скорость
+                score = 0;
+                document.getElementById('score').innerHTML = 'Score: ' + score + ' | High Score: ' + hs;
+
+                for (let r = 0; r < snake.length; r++) { // Красим отрезаемый хвост
+                    snake[r].color = 'red';
+
+                    if (r >= snake.length - tail) {break;}
+                }
+            }
+        }
+    }
+
+    // Рисуем еду
+    for (let f = 0; f < food.length; f++) {
+        ctx.fillStyle = food[f].color;
+        ctx.fillRect(food[f].x, food[f].y, box, box);
+    }
+
+    // Змейка ест еду
+    for (let a = 0; a < food.length; a++) {
+        if (
+            sx < (food[a].x + box) &&
+            sx + box > food[a].x &&
+            sy < (food[a].y + box) &&
+            sy + box > food[a].y
+        ) {
+            // Съел еду
+            food.splice(a, 1); // Удаляем эту еду из списка
+            tail += box; // Добавляем клетку к хвосту
+            speed += 0.1; // Добавляем скорости
+            score++;
+            if (hs < score) {hs = score};
+            document.getElementById('score').innerHTML = 'Score: ' + score + ' | High Score: ' + hs;
+            spawnFood(); // Создаем новую еду
+            break;
+        }
+    }
+}
+
+// Появление еды
+function spawnFood() {
+    let newFood = {
+        x: ~~(Math.random() * c.width),
+        y: ~~(Math.random() * c.height),
+        color: 'orange'
+    };
+    
+    if (
+        (newFood.x < box || newFood.x > c.width - box) ||
+        (newFood.y < box || newFood.y > c.height - box)
+    ) {
+        spawnFood();
+        return;
+    }
+
+    // Исключаем появление еды в змейке
+    for(let t = 0; t < tail.length; t++) {
+        if (
+            newFood.x < (snake[t].x + box) &&
+            newFood.x + box > snake[t].x &&
+            newFood.y < (snake[t].y + box) &&
+            newFood.y + box > snake[t].y
+        ) {
+            spawnFood();
+            return;
+        }
+    }
+
+    food.push(newFood);
+
+    // Добавляем 30% шанс появления больше 1 еды, но не больше 3 на поле
+    if(food.length < 3 && ~~(Math.random() * 1000) > 700){spawnFood();}
+}
+
+// Управление скоростью
+function changeDirection(event) {
+    // Проверка на нажатие клавиши (Старт игры)
+    if(!fkp && [37,38,39,40].indexOf(event.keyCode) > -1) {
+        setTimeout(function() {gs=true;}, 1000);
+        fkp = true;
+        spawnFood();
+    }
+
+    // Направление движения
+    if(event.keyCode == 37 && !(xv > 0)) // left
+      {xv = -speed; yv = 0;}
+  
+    if(event.keyCode == 38 && !(yv > 0)) // top
+      {xv = 0; yv = -speed;}
+  
+    if(event.keyCode == 39 && !(xv < 0)) // right
+      {xv = speed; yv = 0;}
+  
+    if(event.keyCode == 40 && !(yv < 0)) // down
+      {xv = 0; yv = speed;}
+
+    setTimeout(100);
+}
+</script></body></html>
